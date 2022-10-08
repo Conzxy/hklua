@@ -9,18 +9,7 @@
 #include "hklua/function.h"
 #include "hklua/table.h"
 
-// #include "hklua/function.h"
-
 namespace hklua {
-
-/** Enumrator wrapper */
-enum HKLuaError { 
-  HKLUA_OK = LUA_OK,
-  HKLUA_ERRMEM = LUA_ERRMEM,
-  HKLUA_ERRSYNTAX = LUA_ERRSYNTAX,
-  HKLUA_ERRFILE = LUA_ERRFILE,
-  HKLUA_ERRRUN = LUA_ERRRUN,
-};
 
 struct EnvException : std::exception {
  public:
@@ -115,6 +104,50 @@ class Env {
     return (HKLuaError)luaL_dofile(env_, filename);
   }
   
+  /*--------------------------------------------------*/
+  /* GC Module                                        */
+  /*--------------------------------------------------*/
+  
+  void GcCollect()
+  {
+    lua_gc(env_, LUA_GCCOLLECT);
+  }
+
+  void GcCount() const
+  {
+    lua_gc(env_, LUA_GCCOUNT);
+  }
+
+  void GcStop()
+  {
+    lua_gc(env_, LUA_GCSTOP);
+  }
+
+  void GcRestart()
+  {
+    lua_gc(env_, LUA_GCRESTART);
+  }
+
+  bool GcStep()
+  {
+    return lua_gc(env_, LUA_GCSTEP);
+  }
+
+  bool GcIsRunning() const
+  {
+    return lua_gc(env_, LUA_GCISRUNNING) != 0;
+  }
+  
+  void GcIncrementalModeOn(int pause=0, int step_multipiler=0, int step_size=0)
+  {
+    lua_gc(env_, LUA_GCINC, pause, step_multipiler, step_size);
+  }
+
+  void GcGenerationalModeOn(int minor_multipiler=0, int major_multipiler=0)
+  {
+    lua_gc(env_, LUA_GCGEN, minor_multipiler, major_multipiler);
+  }
+
   /*--------------------------------------------------*/
   /* Function Module                                  */
   /*--------------------------------------------------*/
@@ -279,6 +312,31 @@ class Env {
   }
   
   /*--------------------------------------------------*/
+  /* Object Module                                    */
+  /*--------------------------------------------------*/
+
+  // Table GetMetaTable(int index, bool &success)
+  // {
+  //   if (lua_getmetatable(env_, index))
+  //     return Table(env_, StackGetTop());
+  //   return Table(env_);
+  // }
+  
+  // void SetMetaTable(int index)
+  // {
+
+  // }
+  
+  Integer GetLen(int index) const noexcept
+  {
+    Integer ret = 0;
+    lua_len(env_, index);
+    StackConv(env_, -1, ret);
+    const_cast<Env*>(this)->StackPop();
+    return ret;
+  }
+
+  /*--------------------------------------------------*/
   /* Getter                                           */
   /*--------------------------------------------------*/
 
@@ -299,7 +357,6 @@ inline Table Env::GetGlobal<Table>(char const *name, bool *success)
   if (success) *success = result;
   return ret;
 }
-
 
 template <typename... Rets, typename... Args>
 std::tuple<Rets...> Env::CallFunction(char const *name, int msgh,
