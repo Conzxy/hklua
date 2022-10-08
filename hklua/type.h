@@ -16,6 +16,15 @@ using Nil = NilIndicator;
 
 extern Nil lua_nil;
 
+/** Enumrator wrapper */
+enum HKLuaError { 
+  HKLUA_OK = LUA_OK,
+  HKLUA_ERRMEM = LUA_ERRMEM,
+  HKLUA_ERRSYNTAX = LUA_ERRSYNTAX,
+  HKLUA_ERRFILE = LUA_ERRFILE,
+  HKLUA_ERRRUN = LUA_ERRRUN,
+};
+
 } // namespace hklua
 
 #endif // HKLUA_TYPE_H__

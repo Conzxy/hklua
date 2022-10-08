@@ -14,51 +14,27 @@
 namespace hklua {
 
 class Table;
-class Variant;
+class TableGuard;
 
 Table CreateTable(lua_State *env, int narr = 0, int nrec = 0);
 
-
+/**
+ * \brief Represents a Lua table object
+ * 
+ * The table don't manage the lifetime of object
+ * since lua C API also can pop the table object in the stack
+ * e.g. function arguments
+ */
 class Table {
-#if 1
-  class Proxy {
-    friend class Table;
-
-    using KeyValue = std::pair<Variant, Variant>;
-   public:
-    explicit Proxy(Table *table, KeyValue *kv = nullptr)
-      : table_(table)
-      , kv_(kv)
-    {
-    }
-    
-    // Proxy(Proxy const &) = default;
-    Proxy(Proxy &&) = default;
-
-    template <typename T, typename = typename std::enable_if<!AmbigiousCond<Proxy, T>::value>::type>
-    Proxy &operator=(T const &v);
-    /* std::pair<> requires the type must be complete type */
-    
-    Proxy &operator=(Proxy &&rhs)
-    {
-      std::swap(table_, rhs.table_);
-      std::swap(kv_, rhs.kv_);
-      return *this;
-    }
-    
-    Variant &key() const noexcept;
-    Variant &value() const noexcept;
-
-   private:
-    void SetKv(Variant k, Variant v) noexcept;
-
-    Table *table_;
-    std::unique_ptr<KeyValue> kv_;
-  };
+  /**
+   * Used for implementing operator[]
+   */
+  class Proxy;
 
   friend class Proxy;
-#endif
+  friend class TableGuard;
   friend Table CreateTable(lua_State *env, int narr, int nrec);
+  friend bool StackConv(lua_State *env, int index, Table &tb);
  public:
   /**
    * \index The index of the table in the stack(default: 0, invalid index)
@@ -101,11 +77,16 @@ class Table {
   }
 #endif
   
+  /**
+   * Like associated array
+   * You can think this is a syntactic sugar
+   */
   template <typename T>
   Proxy operator[](T const &key);
-
-  // Proxy operator[](char const *key);
-  // Proxy operator[](std::string const &key);
+  
+  /*--------------------------------------------------*/
+  /* Field Module                                     */
+  /*--------------------------------------------------*/
 
   template <typename K, typename F>
   void SetField(K &&key, F&& field)
@@ -115,6 +96,9 @@ class Table {
     SetTable();
   }
   
+  /**
+   * Use lua_setfield to optimize
+   */
   template <typename F>
   void SetField(char const *key, F&& field)
   {
@@ -126,7 +110,7 @@ class Table {
   {
     SetStringField(key, std::forward<F>(field));
   }
-
+  
   template <typename F, typename K>
   bool GetField(K &&key, F &field)
   {
@@ -135,6 +119,9 @@ class Table {
     return StackConv(env_, -1, field);
   }
   
+  /**
+   * Use lua_getfield to optimize
+   */
   template <typename F>
   bool GetField(char const *key, F &field)
   {
@@ -146,6 +133,15 @@ class Table {
   {
     return GetStringField(key, field);
   }
+  
+  /*--------------------------------------------------*/
+  /* Getter Module                                    */
+  /*--------------------------------------------------*/
+
+  int index() const noexcept { return index_; }
+  lua_State *env() const noexcept { return env_; }
+ private:
+  void SetIndex(int index) noexcept { index_ = index; }
 
   template <typename T>
   void SetStringField(char const *key, T &&field)
@@ -182,11 +178,7 @@ class Table {
   {
     lua_gettable(env_, index_);
   }
-  
-  int index() const noexcept { return index_; }
-  void SetIndex(int index) noexcept { index_ = index; }
-  lua_State *env() const noexcept { return env_; }
- private:
+
   lua_State *env_;
   int index_;
 };
@@ -201,6 +193,7 @@ inline Table CreateTable(lua_State *env, int narr, int nrec)
 
 inline bool StackConv(lua_State *env, int index, Table &tb)
 {
+  /* Must in the same environment */
   assert(env == tb.env());
   if (!lua_istable(env, index)) return false;
 #if 0
@@ -216,6 +209,7 @@ inline bool StackConv(lua_State *env, int index, Table &tb)
 
 inline void StackPush(lua_State *env, Table tb)
 {
+  /* Unsetted table is not pushed */
   if (tb.index() == 0) return;
 #if 0
   const auto top = lua_gettop(env);
@@ -232,6 +226,33 @@ inline void StackPush(lua_State *env, Table tb)
     lua_pushvalue(env, tb.index());
 #endif
 }
+
+/**
+ * RAII to manage table resource
+ */
+class TableGuard {
+ public:
+  explicit TableGuard(Table &tb)
+   : tb_(tb)
+  {
+  }
+
+  ~TableGuard() noexcept
+  {
+#if 0
+    if (tb_.index_ == lua_gettop(tb_.env_))
+      lua_pop(tb_.env_, 1);
+    else
+      lua_remove(tb_.env_, tb_.index_);
+#else
+    assert(tb_.index_ == lua_gettop(tb_.env_) || tb_.index_ == -1);
+    lua_pop(tb_.env_, 1);
+#endif
+  }
+
+ private:
+  Table &tb_;
+};
 
 } // namespace hklua
 

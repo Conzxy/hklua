@@ -5,9 +5,9 @@
 #include <string.h>
 #include <string>
 
-#include "hklua/table.h"
 #include "hklua/type.h"
 #include "hklua/stack.h"
+#include "hklua/table.h"
 
 namespace hklua {
 
@@ -257,7 +257,6 @@ inline void swap(hklua::Variant &lhs,
 
 #include "stack.h"
 
-
 namespace hklua {
 
 inline void StackPush(lua_State *env, Variant var)
@@ -335,24 +334,61 @@ inline bool StackConv(lua_State *env, int index, Variant &var)
 
 #undef PADDING
 
+class Table::Proxy {
+  friend class Table;
+
+  using KeyValue = std::pair<Variant, Variant>;
+ public:
+  explicit Proxy(Table *table, KeyValue kv)
+    : table_(table)
+    , kv_(kv)
+  {
+  }
+  
+  // Proxy(Proxy const &) = default;
+  Proxy(Proxy &&) = default;
+
+  template <typename T, typename = typename std::enable_if<!AmbigiousCond<Proxy, T>::value>::type>
+  Proxy &operator=(T const &v);
+  /* std::pair<> requires the type must be complete type */
+  
+  Proxy &operator=(Proxy &&rhs)
+  {
+    std::swap(table_, rhs.table_);
+    std::swap(kv_, rhs.kv_);
+    return *this;
+  }
+  
+  Variant &key() noexcept;
+  Variant &value() noexcept;
+
+ private:
+  Table *table_;
+  /* FIXME Reduce dynamic allocation */
+  // std::unique_ptr<KeyValue> kv_;
+  KeyValue kv_;
+};
 
 template <typename T, typename >
-auto Table::Proxy::operator=(T const &v) -> Proxy&
+inline auto Table::Proxy::operator=(T const &v) -> Proxy&
 {
-  assert(kv_);
-  table_->SetField(kv_->first, v);
-  table_->GetField(kv_->first, kv_->second);
+  // assert(kv_);
+  table_->SetField(kv_.first, v);
+  table_->GetField(kv_.first, kv_.second);
 
   return *this;
 }
 
 template <typename T>
-auto Table::operator[](T const &key) -> Proxy
+inline auto Table::operator[](T const &key) -> Proxy
 {
   Variant tmp;
   GetField(key, tmp);
-  return Proxy(this, new Proxy::KeyValue(key, std::move(tmp)));
+  return Proxy(this, Proxy::KeyValue(key, std::move(tmp)));
 }
+
+inline Variant &Table::Proxy::key() noexcept { return kv_.first; }
+inline Variant &Table::Proxy::value() noexcept { return kv_.second; }
 
 } // namespace hklua
 
