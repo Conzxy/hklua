@@ -197,16 +197,19 @@ class Env {
     lua_getglobal(env_, name);
     return StackConv(env_, lua_gettop(env_), var);
   }
-
+  
+  /**
+   * 'R' is the abbreviation of "Return"
+   */
   template <typename T>
-  T GetGlobal(char const *name, bool *success=nullptr)
+  T GetGlobalR(char const *name, bool *success=nullptr)
   {
     T ret;
     const auto result = GetGlobal(name, ret);
-    if (success) success = result;
+    if (success) *success = result;
     return ret;
   }
-  
+
   template <typename T>
   void SetGlobal(char const *name, T value)
   {
@@ -350,7 +353,7 @@ class Env {
 
 /* This must be put outside of class */
 template<>
-inline Table Env::GetGlobal<Table>(char const *name, bool *success)
+inline Table Env::GetGlobalR<Table>(char const *name, bool *success)
 {
   Table ret(env_);
   const auto result = GetGlobal(name, ret);

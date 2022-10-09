@@ -6,7 +6,6 @@
 #include <string>
 #include <utility> // forward
 #include <assert.h>
-#include <memory>
 
 #include "hklua/stack.h"
 #include "hklua/util/type_traits.h"
@@ -15,6 +14,7 @@ namespace hklua {
 
 class Table;
 class TableGuard;
+class Env;
 
 Table CreateTable(lua_State *env, int narr = 0, int nrec = 0);
 
@@ -44,7 +44,13 @@ class Table {
     , index_(index)
   {
   }
- 
+
+  Table()
+    : Table(nullptr)
+  {
+  }
+  
+  explicit Table(Env &env, int index=0);
 #if 0
   Table(Table const &) = delete;
   Table &operator=(Table const &) = delete;
@@ -112,7 +118,7 @@ class Table {
   }
   
   template <typename F, typename K>
-  bool GetField(K &&key, F &field)
+  bool GetField(K const &key, F &field)
   {
     StackPush(env_, key);
     GetTable();
@@ -134,6 +140,15 @@ class Table {
     return GetStringField(key, field);
   }
   
+  template <typename F, typename K>
+  F GetFieldR(K const &key, bool *success=nullptr)
+  {
+    F ret;
+    auto const result = GetField(key, ret);
+    if (success) *success = result;
+    return ret;
+  }
+
   /*--------------------------------------------------*/
   /* Getter Module                                    */
   /*--------------------------------------------------*/
@@ -183,6 +198,7 @@ class Table {
   int index_;
 };
 
+
 inline Table CreateTable(lua_State *env, int narr, int nrec)
 {
   Table table(env, -1);
@@ -194,7 +210,6 @@ inline Table CreateTable(lua_State *env, int narr, int nrec)
 inline bool StackConv(lua_State *env, int index, Table &tb)
 {
   /* Must in the same environment */
-  assert(env == tb.env());
   if (!lua_istable(env, index)) return false;
 #if 0
   if (tb.index() != index) {
@@ -202,7 +217,7 @@ inline bool StackConv(lua_State *env, int index, Table &tb)
     tb.SetIndex(index);
   }
 #else
-  tb.SetIndex(index);
+  new (&tb) Table(env, index);
 #endif
   return true;
 }
