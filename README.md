@@ -39,7 +39,7 @@ auto tb = env.GetGlobalTableR("name",
   {
     TableGuard dg(d);
 
-    auto d_a = d.GetFieldR<Table>("a");
+    auto d_a = d.GetFieldR<int>("a");
   }
 }
 ```

@@ -88,7 +88,7 @@ TEST (hklua_table, full) {
   table.GetField("a", a);
   table.GetField("b", b);
   table.GetField("c", c);
-printf("a = %s\n", a);
+  printf("a = %s\n", a);
   printf("b = %d\n", b);
   printf("c = %g\n", c);
   
