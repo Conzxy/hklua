@@ -118,45 +118,61 @@ class Table {
   }
   
   template <typename F, typename K>
-  bool GetField(K const &key, F &field)
+  bool GetField(K const &key, F &field, bool pop=true)
   {
     StackPush(env_, key);
     GetTable();
-    return StackConv(env_, -1, field);
+    const auto ret = StackConv(env_, lua_gettop(env_), field);
+    if (pop) lua_pop(env_, 1);
+    return ret;
   }
-  
+ 
+  template <typename K>
+  bool GetFieldTable(K const &key, Table &field, bool pop=false)
+  {
+    return GetField<Table, K>(key, field, pop);
+  }
+
+  template <typename K>
+  bool GetField(K const &key, Table &field, bool pop=false)
+  {
+    return GetFieldTable(key, field, pop);
+  }
+
   /**
    * Use lua_getfield to optimize
    */
   template <typename F>
-  bool GetField(char const *key, F &field)
+  bool GetField(char const *key, F &field, bool pop=true)
   {
-    return GetStringField(key, field);
+    auto ret = GetStringField(key, field);
+    if (pop) lua_pop(env_, 1);
+    return ret;
   }
 
   template <typename F>
-  bool GetField(std::string const &key, F &field)
+  bool GetField(std::string const &key, F &field, bool pop=true)
   {
-    return GetStringField(key, field);
+    auto ret = GetStringField(key, field);
+    if (pop) lua_pop(env_, 1);
+    return ret;
   }
   
   template <typename F, typename K>
-  F GetFieldR(K const &key, bool *success=nullptr)
+  F GetFieldR(K const &key, bool pop=true, bool *success=nullptr)
   {
     F ret;
-    auto const result = GetField(key, ret);
+    auto const result = GetField<F, K>(key, ret, pop);
     if (success) *success = result;
     return ret;
   }
 
-  /*--------------------------------------------------*/
-  /* Getter Module                                    */
-  /*--------------------------------------------------*/
+  template <typename K>
+  Table GetFieldTableR(K const &key, bool pop=false, bool *success=nullptr)
+  {
+    return GetFieldR<Table, K>(key, pop, success);
+  }
 
-  int index() const noexcept { return index_; }
-  lua_State *env() const noexcept { return env_; }
- private:
-  void SetIndex(int index) noexcept { index_ = index; }
 
   template <typename T>
   void SetStringField(char const *key, T &&field)
@@ -175,7 +191,7 @@ class Table {
   bool GetStringField(char const *key, T &field)
   {
     lua_getfield(env_, index_, key);
-    return StackConv(env_, -1, field);
+    return StackConv(env_, lua_gettop(env_), field);
   }
 
   template <typename T>
@@ -183,6 +199,15 @@ class Table {
   {
     return GetStringField(key.c_str(), std::forward<T>(field));
   }
+
+  /*--------------------------------------------------*/
+  /* Getter Module                                    */
+  /*--------------------------------------------------*/
+
+  int index() const noexcept { return index_; }
+  lua_State *env() const noexcept { return env_; }
+ private:
+  void SetIndex(int index) noexcept { index_ = index; }
 
   void SetTable()
   {
@@ -201,7 +226,7 @@ class Table {
 
 inline Table CreateTable(lua_State *env, int narr, int nrec)
 {
-  Table table(env, -1);
+  Table table(env, lua_gettop(env));
   lua_createtable(env, narr, nrec);
   table.index_ = lua_gettop(env);
   return table;

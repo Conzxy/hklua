@@ -192,20 +192,43 @@ class Env {
   /*--------------------------------------------------*/
 
   template <typename T>
-  bool GetGlobal(char const *name, T &var)
+  bool GetGlobal(char const *name, T &var, bool pop=true)
   {
     lua_getglobal(env_, name);
-    return StackConv(env_, lua_gettop(env_), var);
+    auto ret = StackConv(env_, lua_gettop(env_), var);
+    if (pop) StackPop();
+    return ret;
   }
   
+  bool GetGlobal(char const *name, Table &var, bool pop=false)
+  {
+    return GetGlobalTable(name, var, pop);
+  }
+  
+  bool GetGlobalTable(char const *name, Table &var, bool pop=false)
+  {
+    lua_getglobal(env_, name);
+    auto ret = StackConv(env_, lua_gettop(env_), var);
+    if (pop) StackPop();
+    return ret;
+  }
+
   /**
    * 'R' is the abbreviation of "Return"
    */
   template <typename T>
-  T GetGlobalR(char const *name, bool *success=nullptr)
+  T GetGlobalR(char const *name, bool pop=true, bool *success=nullptr)
   {
     T ret;
-    const auto result = GetGlobal(name, ret);
+    const auto result = GetGlobal(name, ret, pop);
+    if (success) *success = result;
+    return ret;
+  }
+  
+  Table GetGlobalTableR(char const *name, bool pop=false, bool *success=nullptr)
+  {
+    Table ret;
+    const auto result = GetGlobal(name, ret, pop);
     if (success) *success = result;
     return ret;
   }
@@ -213,8 +236,8 @@ class Env {
   template <typename T>
   void SetGlobal(char const *name, T value)
   {
-    lua_setglobal(env_, name);
     StackPush(value);
+    lua_setglobal(env_, name);
   }
 
   /*--------------------------------------------------*/
@@ -350,16 +373,6 @@ class Env {
   lua_State *env_;
   std::string name_;
 };
-
-/* This must be put outside of class */
-template<>
-inline Table Env::GetGlobalR<Table>(char const *name, bool *success)
-{
-  Table ret(env_);
-  const auto result = GetGlobal(name, ret);
-  if (success) *success = result;
-  return ret;
-}
 
 template <typename... Rets, typename... Args>
 std::tuple<Rets...> Env::CallFunction(char const *name, int msgh,
