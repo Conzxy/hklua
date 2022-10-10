@@ -133,7 +133,7 @@ inline bool StackConv(lua_State *env, int index, std::string &str)
 inline bool StackConv(lua_State *env, int index, lua_CFunction &func)
 {
   func = lua_tocfunction(env, index);
-  return func;
+  return func != NULL;
 }
 
 bool StackConv(lua_State *env, int index, Table &tb);

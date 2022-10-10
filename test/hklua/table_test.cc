@@ -65,6 +65,7 @@ TEST (hklua_table, full) {
   Env env;
   env.DoFile("/home/conzxy/hklua/test/lua/table_test.lua");
 
+  bool success;
   auto str = env.GetGlobalR<const char*>("str");
   printf("str = %s\n", str);
 
@@ -73,10 +74,28 @@ TEST (hklua_table, full) {
   
   auto number = env.GetGlobalR<Number>("number");
   printf("number = %g\n", number);
+  
+  auto func = env.GetGlobalR<lua_CFunction>("func", true, &success);
+  if (success) {
+    printf("Closure: %p\n", func);
+  } else {
+    printf("Can't get closure\n");
+  }
+  
+  /* In Lua, function is also a closure(light) */
+  auto func2 = env.GetGlobalR<lua_CFunction>("func", false, &success);
+  if (success) {
+    printf("Function: %p\n", func2);
+  } else {
+    printf("Can't get function\n");
+  }
+  
+  env.StackDump();
+  env.StackPop();
 
-  // auto func = env.GetGlobalR<lua_CFunction>("func");
-  // printf("function: %p\n", func);
-  // env.StackPop();
+  int ret;
+  std::tie(ret) = env.CallFunction<int>("func", 0, nullptr, true, 2);
+  printf("ret = %d\n", ret);
 
   auto table = env.GetGlobalTableR("table");
   {
