@@ -203,6 +203,15 @@ class Table {
   /*--------------------------------------------------*/
   /* Getter Module                                    */
   /*--------------------------------------------------*/
+  
+  Integer len() const noexcept
+  { 
+    Integer ret;
+    lua_len(env_, index_);
+    StackConv(env_, -1, ret);
+    lua_pop(env_, 1);
+    return ret;
+  }
 
   int index() const noexcept { return index_; }
   lua_State *env() const noexcept { return env_; }
