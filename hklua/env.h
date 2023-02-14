@@ -190,7 +190,12 @@ class Env {
   /*--------------------------------------------------*/
   /* Global Variable Module                           */
   /*--------------------------------------------------*/
-
+  
+  void GetGlobal(char const *name)
+  {
+    lua_getglobal(env_, name);
+  }
+  
   template <typename T>
   bool GetGlobal(char const *name, T &var, bool pop=true)
   {
@@ -326,6 +331,16 @@ class Env {
   bool StackTo(int index, T &var)
   {
     return ::hklua::StackConv(env_, index, var);
+  }
+  
+  bool StackIsString(int index=-1)
+  {
+    return lua_isstring(env_, index);
+  }
+
+  bool StackIsFunction(int index=-1)
+  {
+    return lua_isfunction(env_, index);
   }
 
   /*--------------------------------------------------*/
