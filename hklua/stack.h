@@ -125,7 +125,7 @@ inline bool StackConv(lua_State *env, int index, std::string &str)
   size_t len = 0;
   auto ret = lua_tolstring(env, index, &len);
   if (ret) {
-    str.append(ret, len);
+    str.assign(ret, len);
   }
   return ret;
 }
