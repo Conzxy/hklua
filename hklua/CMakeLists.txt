@@ -6,8 +6,8 @@ GenLib(${HKLUA_LIB} ${HKLUA_SRC})
 # Don't use find_path.
 # It is not recursive.
 file(GLOB_RECURSE LUA_HPP_PATHS 
-  /usr/include/*/lua.hpp
   /usr/local/*/lua.hpp
+  /usr/include/*/lua.hpp
   ~/*/lua.hpp)
 message(STATUS "LUA_HPP_PATHS = ${LUA_HPP_PATHS}")
 
