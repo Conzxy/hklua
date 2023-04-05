@@ -63,7 +63,7 @@ include_directories(${PROJECT_SOURCE_DIR})
 # are static. That's not I wanted behavior. I want a variable,
 # it can build shared libraries default even though I don't set 
 # it explitly, and the build of static libraries is an option.
-set(BUILD_STATIC_LIBS OFF CACHE BOOL "Build static libraries")
+set(BUILD_STATIC_LIBS ON CACHE BOOL "Build static libraries")
 
 macro (GenLib lib)
   #if (NOT ${BUILD_SHARED_LIBS})
@@ -130,6 +130,7 @@ else ()
   set(HKLUA_LIB hklua_debug)
 endif()
 
+add_subdirectory(third-party)
 add_subdirectory(hklua)
 add_subdirectory(test)
 #add_subdirectory(third-party)
